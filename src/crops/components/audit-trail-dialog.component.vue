@@ -74,8 +74,10 @@
           accept="image/*"
           :maxFileSize="1000000"
           @select="onImageSelect"
-          :auto="true"
+          :auto="false"
           chooseLabel="Seleccionar Imagen"
+          :showUploadButton="false"
+          :showCancelButton="false"
       />
     </div>
 
@@ -123,9 +125,9 @@ export default {
         soilMoisture: null,
         soilTemperature: null,
         airTemperature: null,
-        airHumidity: null,
-        imageUrl: null
+        airHumidity: null
       },
+      selectedImage: null,
       submitted: false
     }
   },
@@ -158,10 +160,47 @@ export default {
       this.$emit('close');
     },
     async onImageSelect(event) {
-      const file = event.files[0];
-      // Aquí deberías implementar la lógica para subir la imagen a tu servidor
-      // y obtener la URL
-      this.audit.imageUrl = 'URL_DE_LA_IMAGEN';
+      try {
+        const file = event.files[0];
+        
+        // Validar tamaño máximo (1MB)
+        if (file.size > 1000000) {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'La imagen no debe superar 1MB',
+            life: 3000
+          });
+          return;
+        }
+
+        // Validar tipo de archivo
+        if (!file.type.startsWith('image/')) {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'El archivo debe ser una imagen',
+            life: 3000
+          });
+          return;
+        }
+
+        this.selectedImage = file;
+        this.$toast.add({
+          severity: 'info',
+          summary: 'Imagen seleccionada',
+          detail: `${file.name} (${(file.size/1024).toFixed(2)} KB)`,
+          life: 3000
+        });
+      } catch (error) {
+        console.error('Error al seleccionar la imagen:', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo procesar la imagen',
+          life: 3000
+        });
+      }
     },
     async saveAudit() {
       this.submitted = true;
@@ -169,14 +208,41 @@ export default {
 
       if (this.isValid()) {
         try {
+          // Validar que haya una imagen seleccionada
+          if (!this.selectedImage) {
+            this.$toast.add({
+              severity: 'warn',
+              summary: 'Advertencia',
+              detail: 'Por favor seleccione una imagen',
+              life: 3000
+            });
+            return;
+          }
+
+          // Validar tipo de archivo
+          if (!this.selectedImage.type.startsWith('image/')) {
+            this.$toast.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'El archivo debe ser una imagen',
+              life: 3000
+            });
+            return;
+          }
+
           const auditData = {
-            ...this.audit,
+            description: this.audit.description,
+            soilMoisture: this.audit.soilMoisture,
+            soilTemperature: this.audit.soilTemperature,
+            airTemperature: this.audit.airTemperature,
+            airHumidity: this.audit.airHumidity,
             sowingId: this.sowingId,
             phenologicalPhase: this.currentPhase
           };
+          
           console.log('Datos completos a enviar:', auditData);
           
-          const response = await this.auditService.createAudit(this.sowingId, auditData);
+          const response = await this.auditService.createAudit(this.sowingId, auditData, this.selectedImage);
 
           this.$toast.add({
             severity: 'success',
