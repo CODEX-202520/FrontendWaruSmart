@@ -23,6 +23,12 @@ export default {
       createAndEditDialogIsVisible: false,
       isEdit: false,
       submitted: false,
+      currentUserId: parseInt(localStorage.getItem('userId'), 10)
+    }
+  },
+  computed: {
+    userQuestions() {
+      return this.questions.filter(question => question.authorId === this.currentUserId);
     }
   },
   methods: {
@@ -41,6 +47,11 @@ export default {
       this.question.date = new Date();
       this.question.authorId = parseInt(userId, 10); // Asegúrate de que sea un número
       this.question = Question.fromDisplayableQuestion(this.question);
+      console.log("Creating question with:", {
+        authorId: this.question.authorId,
+        categoryId: this.question.categoryId,
+        questionText: this.question.ask
+      });
 
       // Enviar la pregunta al backend
       this.forumService.createQuestion(this.question)
@@ -139,10 +150,17 @@ export default {
 
         return {
           ...question,
+          authorId: question.authorId, // Asegurarnos de mantener el authorId
           category: category?.name || 'Categoría desconocida',
-          userName: profile?.fullName || 'Usuario desconocido', // Mapea correctamente el nombre del usuario
+          userName: profile?.fullName || 'Usuario desconocido',
         };
       });
+      
+      console.log('Preguntas procesadas:', this.questions.map(q => ({
+        id: q.id,
+        authorId: q.authorId,
+        ask: q.ask
+      })));
     },
     buildItemData(data) {
       const category = this.categories.find((category) => category.categoryId === data.categoryId);
@@ -194,7 +212,7 @@ export default {
   <div>
     <h2 style="color:black;">
       {{$t('consultationForum')}}
-      <i class="pi pi-comments icon-large" style="font-size: 2rem; margin-left: 0.5rem;"></i>
+      <i class="pi pi-comments icon-large" style="font-size: 2rem; margin-left: 0.5rem; margin-top: 2rem;"></i>
     </h2>
     <pv-button class="pv-button button-brown" label="Ask your colleagues!" @click="onNewItemEventHandler" />
     <pv-tab-view>
@@ -203,7 +221,7 @@ export default {
       </pv-tab-panel>
       <pv-tab-panel header="My Questions">
         <user-question-list
-            :data-source="questions"
+            :data-source="userQuestions"
             :on-edit-item-event-handler="onEditItemEventHandler"
             :confirm-delete-question="confirmDeleteQuestion"
         />

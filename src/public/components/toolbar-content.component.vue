@@ -2,20 +2,96 @@
 import LanguageSwitcher from "./language-switcher.component.vue";
 import AuthenticationSection from "../../iam/components/authentication-section.component.vue";
 import { useAuthenticationStore } from "../../iam/services/authentication.store.js";
+import profileApiService from "../../profiles/service/profile-api.service.js";
+import { useToast } from "primevue/usetoast";
 
 export default {
   name: "toolbar-content",
   components: { LanguageSwitcher, AuthenticationSection },
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       authenticationStore: useAuthenticationStore(),
+      hasProfile: false,
+      isCheckingProfile: false
     };
   },
   computed: {
     showProfileIcon() {
-      const hiddenRoutes = ["sign-in", "sign-up"];
-      return !hiddenRoutes.includes(this.$route.name);
+      const hiddenRoutes = ["sign-in", "sign-up", "membership-selector", "user-profile-create"];
+      return !hiddenRoutes.includes(this.$route.name) && this.hasProfile;
     },
+    isAdmin() {
+      return this.authenticationStore.currentUserRole === 'ADMINISTRADOR_WARU_SMART';
+    },
+    showNavigation() {
+      console.log("this.hasProfile:", this.hasProfile);
+      console.log("this.authenticationStore.isSignedIn:", this.authenticationStore.isSignedIn);
+      return this.hasProfile && this.authenticationStore.isSignedIn;
+    }
+  },
+  methods: {
+    async checkUserProfile() {
+      if (this.isCheckingProfile) return;
+      
+      const userId = localStorage.getItem('userId');
+      if (!userId || !this.authenticationStore.isSignedIn) {
+        this.hasProfile = false;
+        return;
+      }
+
+      this.isCheckingProfile = true;
+      try {
+        const response = await profileApiService.getUserProfileById(userId);
+        this.hasProfile = Boolean(response && response.data);
+        if (!this.hasProfile && this.$route.name !== 'user-profile-create' && this.$route.name !== 'membership-selector') {
+          this.toast.add({
+            severity: 'info',
+            summary: 'Información',
+            detail: 'Por favor, complete su perfil para continuar',
+            life: 5000
+          });
+          this.$router.push('/membership-selector');
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error);
+        this.hasProfile = false;
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo verificar el perfil del usuario',
+          life: 3000
+        });
+      } finally {
+        this.isCheckingProfile = false;
+      }
+    }
+  },
+  async mounted() {
+    await this.checkUserProfile();
+  },
+  watch: {
+    'authenticationStore.isSignedIn': {
+      immediate: true,
+      async handler(newValue) {
+        if (newValue) {
+          await this.checkUserProfile();
+        } else {
+          this.hasProfile = false;
+        }
+      }
+    },
+    '$route': {
+      immediate: true,
+      async handler() {
+        if (this.authenticationStore.isSignedIn) {
+          await this.checkUserProfile();
+        }
+      }
+    }
   },
 };
 </script>
@@ -28,7 +104,7 @@ export default {
       </span>
     </template>
 
-    <template #center v-if="authenticationStore.isSignedIn">
+    <template #center v-if="showNavigation">
       <div class="toolbar-section center-start">
         <router-link to="/control-panel">
           <pv-button class="bg-transparent mr-4">
@@ -43,6 +119,11 @@ export default {
         <router-link to="/consultation-forum">
           <pv-button class="bg-transparent mr-4">
             <p>{{ $t('ConsultationForum') }}</p>
+          </pv-button>
+        </router-link>
+        <router-link v-if="isAdmin" to="/membership-selector">
+          <pv-button class="bg-transparent mr-4">
+            <p>{{ $t('subscriptions.title') }}</p>
           </pv-button>
         </router-link>
       </div>

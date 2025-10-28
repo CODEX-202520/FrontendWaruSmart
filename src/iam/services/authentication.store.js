@@ -9,14 +9,17 @@ export const useAuthenticationStore = defineStore({
     id: 'authentication',
     state: () => ({
         signedIn: localStorage.getItem('token') !== null, // Verifica si hay un token en localStorage
-        userId: localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')) : 0, // Obtiene el userId del localStorage
-        username: localStorage.getItem('username') || '', // Obtiene el username del localStorage
+        userId: localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId')) : 0, 
+        username: localStorage.getItem('username') || '', 
+        role: localStorage.getItem('role') || '',
     }),
     getters: {
         isSignedIn: (state) => state.signedIn,
         currentUserId: (state) => state.userId,
         currentUsername: (state) => state.username,
+        currentUserRole: (state) => state.role,
         currentToken: () => localStorage.getItem('token'),
+        isAdmin: (state) => state.role === 'ADMINISTRADOR_WARU_SMART',
     },
     actions: {
         async signIn(signInRequest, router) {
@@ -27,10 +30,12 @@ export const useAuthenticationStore = defineStore({
                 this.signedIn = true;
                 this.userId = signInResponse.id;
                 this.username = signInResponse.username;
+                this.role = response.data.role || 'USUARIO';
 
                 localStorage.setItem('token', signInResponse.token);
                 localStorage.setItem('userId', signInResponse.id);
                 localStorage.setItem('username', signInResponse.username);
+                localStorage.setItem('role', this.role);
 
                 console.log(signInResponse);
                 router.push({ name: 'control-panel' });
@@ -45,13 +50,30 @@ export const useAuthenticationStore = defineStore({
                 const response = await authenticationService.signUp(signUpRequest);
                 const signUpResponse = new SignUpResponse(response.data.message);
 
-                console.log(signUpResponse);
+                console.log('SignUp Response:', signUpResponse);
 
-                // Llama a signIn y redirige a la ruta especificada
-                await this.signIn(signUpRequest, router);
-                router.push({ name: redirectRoute });
+                // Esperar un momento para asegurarse de que el usuario se haya creado correctamente
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Crear un nuevo objeto para el inicio de sesión
+                const signInRequest = {
+                    username: signUpRequest.username,
+                    password: signUpRequest.password
+                };
+
+                // Intentar iniciar sesión
+                try {
+                    await this.signIn(signInRequest, router);
+                    router.push({ name: redirectRoute });
+                } catch (signInError) {
+                    console.error('Error en el inicio de sesión después del registro:', signInError);
+                    // Si falla el inicio de sesión, mostrar un mensaje al usuario
+                    alert('Registro exitoso. Por favor, intente iniciar sesión manualmente.');
+                    router.push({ name: 'sign-in' });
+                }
             } catch (error) {
-                console.error(error);
+                console.error('Error en el registro:', error);
+                alert('Error en el registro: ' + (error.response?.data?.message || 'Por favor intente nuevamente'));
                 router.push({ name: 'sign-up' });
             }
         },
@@ -60,6 +82,7 @@ export const useAuthenticationStore = defineStore({
             this.signedIn = false;
             this.userId = 0;
             this.username = '';
+            this.role = '';
 
             // Limpia todo el localStorage
             localStorage.clear();

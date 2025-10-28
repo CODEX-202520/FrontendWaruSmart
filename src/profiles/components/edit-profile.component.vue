@@ -1,23 +1,28 @@
 <script>
 import { ProfileApiService } from "../service/profile-api.service.js";
-import { Profile } from "../model/profile.entity.js";
+import { useToast } from "primevue/usetoast";
+import { SubscriptionsApiService } from "../service/subscriptions-api.service.js";
 
 const profileApiService = new ProfileApiService();
+const subscriptionsService = new SubscriptionsApiService();
 
 export default {
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
-      memberships: [
-        { id: 1, name: 'Basic Package' },
-        { id: 2, name: 'Standard Package' },
-        { id: 3, name: 'Premium Package' }
-      ],
-      currentPlanName: '',
-      newName: '',
+      subscriptionDialogVisible: false,
+      selectedNewSubscription: null,
+      profileId: null,
+      currentPlan: null,
+      newFirstName: '',
+      newLastName: '',
       newEmail: '',
       newCountry: null,
       newCity: null,
-      newSubscription: '',
+      currentSubscriptionId: null,
       isEditable: false,
       countries: [
         { id: 1, name: 'Chile', cities: ['Santiago', 'Antofagasta', 'Concepción'] },
@@ -26,38 +31,69 @@ export default {
         { id: 4, name: 'Perú', cities: ['Lima', 'Arequipa', 'Trujillo'] },
       ],
       allCities: [
-        { id: 1, name: 'Santiago', countryId: 1 },
-        { id: 2, name: 'Antofagasta', countryId: 1 },
-        { id: 3, name: 'Concepción', countryId: 1 },
-        { id: 4, name: 'Bogotá', countryId: 2 },
-        { id: 5, name: 'Barranquilla', countryId: 2 },
-        { id: 6, name: 'Medellin', countryId: 2 },
-        { id: 7, name: 'Guayaquil', countryId: 3 },
-        { id: 8, name: 'Quito', countryId: 3 },
-        { id: 9, name: 'Cuenca', countryId: 3 },
-        { id: 10, name: 'Lima', countryId: 4 },
-        { id: 11, name: 'Arequipa', countryId: 4 },
-        { id: 12, name: 'Trujillo', countryId: 4 },
+        // Chile (1)
+        { id: 10, name: 'Santiago', countryId: 1 },
+        { id: 20, name: 'Antofagasta', countryId: 1 },
+        { id: 30, name: 'Concepción', countryId: 1 },
+        // Colombia (2)
+        { id: 40, name: 'Bogotá', countryId: 2 },
+        { id: 50, name: 'Barranquilla', countryId: 2 },
+        { id: 60, name: 'Medellin', countryId: 2 },
+        // Ecuador (3)
+        { id: 70, name: 'Guayaquil', countryId: 3 },
+        { id: 80, name: 'Quito', countryId: 3 },
+        { id: 90, name: 'Cuenca', countryId: 3 },
+        // Perú (4)
+        { id: 100, name: 'Lima', countryId: 4 },
+        { id: 110, name: 'Arequipa', countryId: 4 },
+        { id: 120, name: 'Trujillo', countryId: 4 },
       ],
       cities: []
     };
   },
-  mounted() {
-    const userId = localStorage.getItem('userId');
-    profileApiService.getUserProfileById(userId).then(response => {
+  async mounted() {
+    try {
+      const userId = localStorage.getItem('userId');
+      const response = await profileApiService.getUserProfileById(userId);
       const prof = response.data;
-      this.profileId = prof.id; // Guarda el profileId
-      this.newName = prof.fullName;
+      
+      // Cargar datos del perfil
+      this.profileId = prof.id;
+      const [firstName, ...lastNameParts] = prof.fullName.split(' ');
+      this.newFirstName = firstName;
+      this.newLastName = lastNameParts.join(' ');
       this.newEmail = prof.email;
       this.newCountry = prof.countryId;
-      this.newCity = prof.cityId;
-      this.newSubscription = prof.subscriptionId;
+      
+      // Cargar ciudades del país y encontrar la ciudad correcta
+      this.updateCities(prof.countryId);
+      const cityMatch = this.allCities.find(c => c.id === prof.cityId);
+      this.newCity = cityMatch ? cityMatch.id : null;
+      this.currentSubscriptionId = prof.subscriptionId;
+      
+      // Actualizar ciudades basado en el país
       this.updateCities(this.newCountry);
-      const currentPlan = this.memberships.find(plan => plan.id === this.newSubscription);
-      this.currentPlanName = currentPlan ? currentPlan.name : 'Unknown Plan';
-    }).catch(error => {
+      
+      // Cargar información de la suscripción actual
+      const subscriptionsData = await subscriptionsService.getAllSubscriptions();
+      this.currentPlan = subscriptionsData.find(sub => sub.id === this.currentSubscriptionId);
+      if (!this.currentPlan) {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo cargar la información de la suscripción actual',
+          life: 3000
+        });
+      }
+    } catch (error) {
       console.error('Error obteniendo el perfil del usuario:', error);
-    });
+      this.toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'No se pudo cargar la información del perfil',
+        life: 3000
+      });
+    }
   },
   watch: {
     newCountry(newVal) {
@@ -68,23 +104,85 @@ export default {
     enableEdit() {
       this.isEditable = true;
     },
-    confirmApply() {
+    async confirmApply() {
+      if (!this.newFirstName || !this.newLastName || !this.newEmail || !this.newCountry || !this.newCity) {
+        this.toast.add({
+          severity: 'warn',
+          summary: 'Campos incompletos',
+          detail: 'Por favor complete todos los campos obligatorios.',
+          life: 3000
+        });
+        return;
+      }
+
+      if (!this.newEmail.includes('@')) {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Por favor ingrese un correo electrónico válido',
+          life: 3000
+        });
+        return;
+      }
+
+      // Obtener la ciudad seleccionada para verificar su ID
+      const selectedCity = this.allCities.find(c => c.id === this.newCity);
+      if (!selectedCity) {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Ciudad no válida',
+          life: 3000
+        });
+        return;
+      }
+
+      // Verificar que la ciudad corresponda al país seleccionado
+      if (selectedCity.countryId !== this.newCountry) {
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'La ciudad seleccionada no pertenece al país seleccionado',
+          life: 3000
+        });
+        return;
+      }
+
       const profileData = {
-        fullName: this.newName,
-        emailAddress: this.newEmail,
-        countryId: this.newCountry,
-        cityId: this.newCity,
-        subscriptionId: this.newSubscription
+        fullName: `${this.newFirstName.trim()} ${this.newLastName.trim()}`,
+        emailAddress: this.newEmail.trim().toLowerCase(),
+        countryId: parseInt(this.newCountry, 10),
+        cityId: selectedCity.id,
+        subscriptionId: parseInt(this.currentSubscriptionId, 10)
       };
 
-      profileApiService.updateProfile(this.profileId, profileData).then(response => {
-        console.log(response);
+      try {
+        await profileApiService.updateProfile(this.profileId, profileData);
+        this.toast.add({
+          severity: 'success',
+          summary: 'Perfil actualizado',
+          detail: 'Los cambios han sido guardados exitosamente',
+          life: 3000
+        });
         this.$router.push('/control-panel');
-        alert('¡Actualización exitosa!');
-      }).catch(error => {
+      } catch (error) {
         console.error('Error actualizando el perfil:', error);
-        alert('Error al actualizar.');
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'No se pudo actualizar el perfil. Por favor intente nuevamente.',
+          life: 3000
+        });
+      }
+    },
+    openSubscriptionChange() {
+      this.$router.push({
+        name: 'membership-selector',
+        query: { mode: 'update', currentPlanId: this.currentSubscriptionId }
       });
+    },
+    showSubscriptionChangeConfirmation() {
+      this.subscriptionDialogVisible = true;
     },
     signOut() {
       this.$router.push('/sign-in');
@@ -125,16 +223,30 @@ export default {
 
           <!-- Columna de formulario -->
           <div class="profile-form-column">
-            <!-- Nombre y Email -->
+            <!-- Fila de Nombre y Apellido -->
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">{{ $t('name') }}:</label>
-                <pv-input-text v-model="newName" :disabled="!isEditable" class="form-input" />
+                <label class="form-label">{{ $t('firstName') }}:</label>
+                <div class="input-group">
+                  <pv-input-text v-model="newFirstName" :disabled="!isEditable" class="form-input"/>
+                </div>
               </div>
 
               <div class="form-group">
+                <label class="form-label">{{ $t('lastName') }}:</label>
+                <div class="input-group">
+                  <pv-input-text v-model="newLastName" :disabled="!isEditable" class="form-input"/>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fila de Email -->
+            <div class="form-row">
+              <div class="form-group">
                 <label class="form-label">{{ $t('email') }}:</label>
-                <pv-input-text v-model="newEmail" :disabled="!isEditable" class="form-input" />
+                <div class="input-group">
+                  <pv-input-text v-model="newEmail" :disabled="!isEditable" class="form-input"/>
+                </div>
               </div>
             </div>
 
@@ -292,6 +404,62 @@ export default {
   border: none;
   padding: 0.6rem 1.5rem;
   border-radius: 4px;
+}
+
+.subscription-section {
+  width: 100%;
+}
+
+.subscription-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+}
+
+.current-plan {
+  flex: 1;
+}
+
+.current-plan h3 {
+  color: #2c5a40;
+  margin: 0 0 0.5rem 0;
+}
+
+.current-plan .price {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #3E7C59;
+}
+
+.change-plan-button {
+  background-color: #9A5D4E;
+  border: none;
+  color: white;
+}
+
+.change-plan-button:hover {
+  background-color: #7a4a3e;
+}
+
+.change-plan-button:disabled {
+  background-color: #cccccc;
+}
+
+.confirmation-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.confirmation-content p {
+  margin: 0;
+  line-height: 1.5;
+  color: #555;
 }
 
 @media (max-width: 768px) {

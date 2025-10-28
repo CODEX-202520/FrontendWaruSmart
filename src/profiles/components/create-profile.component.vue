@@ -91,10 +91,16 @@
 
 <script>
 import { ProfileApiService } from "../service/profile-api.service.js";
+import { useAuthenticationStore } from "../../iam/services/authentication.store.js";
+import { useToast } from "primevue/usetoast";
 
 const profileApiService = new ProfileApiService();
 
 export default {
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       newFirstName: '',
@@ -109,18 +115,22 @@ export default {
         { id: 4, name: 'Perú' },
       ],
       allCities: [
-        { id: 1, name: 'Santiago', countryId: 1 },
-        { id: 2, name: 'Antofagasta', countryId: 1 },
-        { id: 3, name: 'Concepción', countryId: 1 },
-        { id: 4, name: 'Bogotá', countryId: 2 },
-        { id: 5, name: 'Barranquilla', countryId: 2 },
-        { id: 6, name: 'Medellin', countryId: 2 },
-        { id: 7, name: 'Guayaquil', countryId: 3 },
-        { id: 8, name: 'Quito', countryId: 3 },
-        { id: 9, name: 'Cuenca', countryId: 3 },
-        { id: 10, name: 'Lima', countryId: 4 },
-        { id: 11, name: 'Arequipa', countryId: 4 },
-        { id: 12, name: 'Trujillo', countryId: 4 },
+        // Chile (1)
+        { id: 10, name: 'Santiago', countryId: 1 },
+        { id: 20, name: 'Antofagasta', countryId: 1 },
+        { id: 30, name: 'Concepción', countryId: 1 },
+        // Colombia (2)
+        { id: 40, name: 'Bogotá', countryId: 2 },
+        { id: 50, name: 'Barranquilla', countryId: 2 },
+        { id: 60, name: 'Medellin', countryId: 2 },
+        // Ecuador (3)
+        { id: 70, name: 'Guayaquil', countryId: 3 },
+        { id: 80, name: 'Quito', countryId: 3 },
+        { id: 90, name: 'Cuenca', countryId: 3 },
+        // Perú (4)
+        { id: 100, name: 'Lima', countryId: 4 },
+        { id: 110, name: 'Arequipa', countryId: 4 },
+        { id: 120, name: 'Trujillo', countryId: 4 },
       ],
       cities: []
     };
@@ -139,33 +149,66 @@ export default {
       const userId = localStorage.getItem('userId');
 
       if (!userId) {
-        alert('No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.');
+        this.toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.', life: 3000 });
+        this.$router.push('/sign-in');
         return;
       }
 
       if (!this.newFirstName || !this.newLastName || !this.newEmail || !this.newCountry || !this.newCity) {
-        alert('Por favor complete todos los campos obligatorios.');
+        this.toast.add({ severity: 'warn', summary: 'Campos incompletos', detail: 'Por favor complete todos los campos obligatorios.', life: 3000 });
         return;
       }
 
       const selectedCity = this.allCities.find(c => c.id === this.newCity);
       if (!selectedCity || selectedCity.countryId !== this.newCountry) {
-        alert('La ciudad seleccionada no pertenece al país seleccionado.');
+        this.toast.add({ severity: 'error', summary: 'Error', detail: 'La ciudad seleccionada no pertenece al país seleccionado.', life: 3000 });
         return;
       }
+
+      const subscriptionId = parseInt(this.$route.query.subscriptionId, 10);
+      if (!subscriptionId) {
+        this.toast.add({ severity: 'warn', summary: 'Suscripción requerida', detail: 'Por favor, selecciona una suscripción primero.', life: 3000 });
+        this.$router.push('/membership-selector');
+        return;
+      }
+
+      // Validaciones adicionales
+      if (!this.newEmail.includes('@')) {
+        this.toast.add({ severity: 'error', summary: 'Error', detail: 'Por favor ingrese un correo electrónico válido', life: 3000 });
+        return;
+      }
+
+      // Obtener el rol del usuario del store de autenticación
+      const authStore = useAuthenticationStore();
+      const userRole = authStore.currentUserRole;
+
+      if (!userRole) {
+        alert('No se pudo determinar el rol del usuario. Por favor, inicia sesión nuevamente.');
+        this.$router.push('/sign-in');
+        return;
+      }
+
+      // La variable selectedCity ya está definida arriba, así que usamos la misma referencia aquí
 
       const profileData = {
         firstName: this.newFirstName.trim(),
         lastName: this.newLastName.trim(),
-        email: this.newEmail.trim(),
-
-        // Enviamos estos "confundidos a propósito":
-        subscriptionId: this.newCountry,  // El backend lo interpretará como countryId
-        countryId: this.newCity,          // El backend lo interpretará como cityId
-        cityId: 10,                       // El backend lo interpretará como subscriptionId (fijo)
-
-        userId: parseInt(userId, 10)
+        email: this.newEmail.trim().toLowerCase(),
+        countryId: parseInt(this.newCountry, 10),
+        cityId: selectedCity.id, // Usamos el ID correcto de la ciudad
+        subscriptionId: parseInt(subscriptionId, 10),
+        userId: parseInt(userId, 10),
+        role: userRole
       };
+
+      // Validar que todos los IDs sean números válidos
+      if (isNaN(profileData.countryId) || 
+          isNaN(profileData.cityId) || 
+          isNaN(profileData.subscriptionId) || 
+          isNaN(profileData.userId)) {
+        alert('Error en los datos del formulario. Por favor, recarga la página e intenta nuevamente.');
+        return;
+      }
 
       /*
       * const profileData = {
@@ -184,11 +227,36 @@ export default {
       // Aquí usas tu método .create()
       profileApiService.create(profileData)
           .then(response => {
-            this.$router.push('/membership-selector');
+            this.toast.add({
+              severity: 'success',
+              summary: '¡Perfil creado!',
+              detail: 'Tu perfil ha sido creado exitosamente.',
+              life: 3000
+            });
+            // Redirigir al panel de control después de crear el perfil
+            this.$router.push('/control-panel');
           })
           .catch(error => {
-            console.error('Error al crear el perfil:', error.response?.data || error.message);
-            alert('Error al crear el perfil. Verifica la consola para más detalles.');
+            console.error('Error al crear el perfil:', error.response?.data);
+            let errorDetail = '';
+            
+            if (error.response?.data?.errors) {
+              // Extraer mensajes específicos de validación
+              errorDetail = Object.values(error.response.data.errors)
+                .flat()
+                .join(', ');
+            } else if (error.response?.data?.title) {
+              errorDetail = error.response.data.title;
+            } else {
+              errorDetail = 'Hubo un error al procesar tu solicitud. Por favor, intenta nuevamente.';
+            }
+            
+            this.toast.add({
+              severity: 'error',
+              summary: 'Error al crear el perfil',
+              detail: errorDetail,
+              life: 5000
+            });
           });
     }
 

@@ -128,13 +128,13 @@ async loadSowings() {
       </script>
 
       <template>
-        <div>
-          <h1 class="title">
+        <div class="section-container">
+          <h1 class="section-title">
             Crop History
             <i class="pi pi-history icon-large" style="font-size: 2.5rem; margin-left: 0.5rem;"></i>
           </h1>
           <pv-data-table
-            class="table-margin"
+            class="p-4"
             ref="dt"
             :value="sowings"
             v-model:selection="selectedSowing"
@@ -196,25 +196,48 @@ async loadSowings() {
 .dialog-image {
   width: 50%;
   height: auto;
+  border-radius: 8px;
+  margin: 1rem 0;
 }
+
 .details-table {
   width: 100%;
-  margin-top: 20px;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: var(--surface-ground);
+  border-radius: 6px;
 }
+
 .row {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--surface-border);
 }
+
+.row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
 .label {
-  font-weight: bold;
+  font-weight: 600;
+  color: var(--text-color);
 }
+
 .value {
-  color: #555;
+  color: var(--text-color-secondary);
 }
+
 .close-button {
-  margin-top: 20px;
-  background-color: black;
+  margin-top: 1.5rem;
+  background-color: var(--primary-color);
   color: white;
+  transition: background-color 0.2s;
+}
+
+.close-button:hover {
+  background-color: var(--primary-dark-color);
 }
 </style>

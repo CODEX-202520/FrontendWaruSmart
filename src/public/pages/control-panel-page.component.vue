@@ -24,60 +24,61 @@ export default {
 </script>
 
 <template>
-  <div class="main-container">
-    <div class="left-container">
+  <div class="section-container">
+    <h1 class="section-title">{{ $t('controlPanel') }}</h1>
+    <div class="main-container">
+      <div class="left-container">
+        <pv-card class="justify-content-center mt-2">
+          <template #content>
+            <i class="pi pi-clipboard icon-large"></i>
+          </template>
+          <template #footer>
+            <router-link :to="items[1].to"  rel="noopener">
+              <pv-button class="button-green" :label="items[1].label" />
+            </router-link>
+          </template>
+        </pv-card>
 
-      <pv-card class="justify-content-center mt-2">
-        <template #content>
-          <i class="pi pi-clipboard icon-large"></i>
-        </template>
-        <template #footer>
-          <router-link :to="items[1].to"  rel="noopener">
-            <pv-button class="button-green" :label="items[1].label" />
-          </router-link>
-        </template>
-      </pv-card>
+        <pv-card class="justify-content-center mt-2">
+          <template #content>
+            <i class="pi pi-chart-bar icon-large"></i>
+          </template>
+          <template #footer>
+            <router-link :to="items[0].to"  rel="noopener">
+              <pv-button class="button-green" :label="items[0].label" />
+            </router-link>
+          </template>
+        </pv-card>
+      </div>
 
-      <pv-card class="justify-content-center mt-2">
-        <template #content>
-          <i class="pi pi-chart-bar icon-large"></i>
-        </template>
-        <template #footer>
-          <router-link :to="items[0].to"  rel="noopener">
-            <pv-button class="button-green" :label="items[0].label" />
-          </router-link>
-        </template>
-      </pv-card>
-
-
-    </div>
-
-    <div class="right-container">
-      <pv-card class="card-crop-control">
-        <template #content>
-          <h2>{{$t('seasonCropRecommendation')}}</h2>
-          <h3>{{ recommendedCrop?.name }}</h3>
-          <img :src="recommendedCrop?.imageUrl" alt="Crop image" class="fixed-size-image">
-          <p>{{ recommendedCrop?.description }}</p>
-        </template>
-      </pv-card>
+      <div class="right-container">
+        <pv-card class="card-crop-control">
+          <template #content>
+            <h2>{{$t('seasonCropRecommendation')}}</h2>
+            <h3>{{ recommendedCrop?.name }}</h3>
+            <img :src="recommendedCrop?.imageUrl" alt="Crop image" class="fixed-size-image">
+            <p>{{ recommendedCrop?.description }}</p>
+          </template>
+        </pv-card>
+      </div>
     </div>
   </div>
-
 </template>
 
 <style scoped>
 .main-container {
   display: flex;
-  justify-content: center; /* Centra horizontalmente */
-  align-items: center; /* Centra verticalmente */
-  height: 90vh; /* Ocupa toda la altura de la pantalla */
+  justify-content: center;
+  align-items: flex-start;
+  min-height: calc(100vh - 200px); /* Ajustado para considerar el título y el toolbar */
+  padding: 2rem;
 }
 
 @media (max-width: 768px) {
   .main-container {
     flex-direction: column;
-    /*margin-top:8em;*/
+    align-items: center;
+    padding: 1rem;
   }
 }
 
@@ -126,5 +127,4 @@ export default {
   padding: 1rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Opcional: sombra para mejor apariencia */
 }
-
 </style>

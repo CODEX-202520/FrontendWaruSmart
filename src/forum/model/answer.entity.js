@@ -1,8 +1,8 @@
 export class Answer {
-    constructor(id, questionId, authorId, answerText) {
+    constructor(id, questionId, userName, answerText) {
         this.id = id;
         this.questionId = questionId;
-        this.authorId = authorId;
+        this.userName = userName;
         this.answerText = answerText;
     }
 
@@ -16,10 +16,12 @@ export class Answer {
     }
 
     static toDisplayableAnswer(answer) {
+        console.log("Converting answer:", answer);
         return {
             id: answer.answerId,
             questionId: answer.questionId,
-            userName: answer.authorId,
+            authorId: answer.authorId,  // Mantener el authorId
+            userName: answer.userName,
             content: answer.answerText
         };
     }

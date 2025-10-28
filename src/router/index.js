@@ -14,10 +14,11 @@ import PageNotFoundComponent from "../public/pages/page-not-found.component.vue"
 import SignUpComponent from "../iam/pages/sign-up.component.vue";
 import SignInComponent from "../iam/pages/sign-in.component.vue";
 import {authenticationGuard} from "../iam/services/authentication.guard.js";
+import {authorizationGuard} from "../iam/services/authorization.guard.js";
 
 
 const routes = [
-    { path: '/', redirect: '/home', name: 'home-redirect', meta: { title: 'Home' } },
+    { path: '/', redirect: '/sign-in', component: SignInComponent, meta: { title: 'Sign In' } },
     { path: '/sign-in', name: 'sign-in', component: SignInComponent, meta: { title: 'Sign In' } },
     { path: '/sign-up', name: 'sign-up', component: SignUpComponent, meta: { title: 'Sign Up' } },
     { path: '/user-profile-edit/:username', name: 'user-profile-edit', component: UserProfileEditPageComponent, meta: { title: 'Edit Profile' } },
@@ -40,6 +41,20 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     let baseTitle = 'WaruSmart';
     document.title = `${baseTitle} | ${to.meta['title']}`;
-    authenticationGuard(to, from, next);
+    
+    // First check authentication
+    authenticationGuard(to, from, (route) => {
+        if (route) {
+            // If authentication guard returns a route, navigate to it
+            next(route);
+        } else {
+            // Authentication passed, now check authorization if  needed
+            if (to.meta.requiresRole) {
+                authorizationGuard(to, from, next, to.meta.requiresRole);
+            } else {
+                next();
+            }
+        }
+    });
 });
 export default router;

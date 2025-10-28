@@ -46,6 +46,10 @@ export class ForumApiService{
         return http.post("/forum/answers",answer);
     }
 
+    deleteAnswer(id) {
+        return http.delete(`/forum/answers/${id}`);
+    }
+
     getAllCategories(){
         return http().get('/forum/categories');
     }
