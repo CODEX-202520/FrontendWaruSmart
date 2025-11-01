@@ -57,7 +57,7 @@ export default {
             <pv-input-icon>
               <i class="pi pi-search" />
             </pv-input-icon>
-            <pv-input-text v-model="filters['global'].value" placeholder="Search..." />
+            <pv-input-text v-model="filters['global'].value" :placeholder="$t('searchPlaceholder')" />
           </pv-icon-field>
         </div>
       </template>
@@ -80,7 +80,7 @@ export default {
 
   <div v-if="isQuestionSelected" class="position-relative">
     <div class="position-absolute top-0 start-0 mt-2 ms-2">
-      <pv-button class=" button-green" label="Back" @click="returnQuestionsTable()"/>
+      <pv-button class=" button-green" :label="$t('back')" @click="returnQuestionsTable()"/>
     </div>
    <answer-list :question="selectedQuestion" :is-community-answers="true"/>
   </div>

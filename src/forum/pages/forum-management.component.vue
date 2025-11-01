@@ -214,7 +214,7 @@ export default {
       {{$t('consultationForum')}}
       <i class="pi pi-comments icon-large" style="font-size: 2rem; margin-left: 0.5rem; margin-top: 2rem;"></i>
     </h2>
-    <pv-button class="pv-button button-brown" label="Ask your colleagues!" @click="onNewItemEventHandler" />
+    <pv-button class="pv-button button-brown" :label="$t('askColleagues')" @click="onNewItemEventHandler" />
     <pv-tab-view>
       <pv-tab-panel header="Community">
         <community-question-list :data-source="questions"/>

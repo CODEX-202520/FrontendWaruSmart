@@ -1,10 +1,7 @@
 <script>
 import { ProfileApiService } from "../service/profile-api.service.js";
 import { useToast } from "primevue/usetoast";
-import { SubscriptionsApiService } from "../service/subscriptions-api.service.js";
-
 const profileApiService = new ProfileApiService();
-const subscriptionsService = new SubscriptionsApiService();
 
 export default {
   setup() {
@@ -13,16 +10,12 @@ export default {
   },
   data() {
     return {
-      subscriptionDialogVisible: false,
-      selectedNewSubscription: null,
       profileId: null,
-      currentPlan: null,
       newFirstName: '',
       newLastName: '',
       newEmail: '',
       newCountry: null,
       newCity: null,
-      currentSubscriptionId: null,
       isEditable: false,
       countries: [
         { id: 1, name: 'Chile', cities: ['Santiago', 'Antofagasta', 'Concepción'] },
@@ -69,22 +62,8 @@ export default {
       this.updateCities(prof.countryId);
       const cityMatch = this.allCities.find(c => c.id === prof.cityId);
       this.newCity = cityMatch ? cityMatch.id : null;
-      this.currentSubscriptionId = prof.subscriptionId;
-      
       // Actualizar ciudades basado en el país
       this.updateCities(this.newCountry);
-      
-      // Cargar información de la suscripción actual
-      const subscriptionsData = await subscriptionsService.getAllSubscriptions();
-      this.currentPlan = subscriptionsData.find(sub => sub.id === this.currentSubscriptionId);
-      if (!this.currentPlan) {
-        this.toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se pudo cargar la información de la suscripción actual',
-          life: 3000
-        });
-      }
     } catch (error) {
       console.error('Error obteniendo el perfil del usuario:', error);
       this.toast.add({
@@ -152,8 +131,7 @@ export default {
         fullName: `${this.newFirstName.trim()} ${this.newLastName.trim()}`,
         emailAddress: this.newEmail.trim().toLowerCase(),
         countryId: parseInt(this.newCountry, 10),
-        cityId: selectedCity.id,
-        subscriptionId: parseInt(this.currentSubscriptionId, 10)
+        cityId: selectedCity.id
       };
 
       try {
@@ -175,21 +153,11 @@ export default {
         });
       }
     },
-    openSubscriptionChange() {
-      this.$router.push({
-        name: 'membership-selector',
-        query: { mode: 'update', currentPlanId: this.currentSubscriptionId }
-      });
-    },
-    showSubscriptionChangeConfirmation() {
-      this.subscriptionDialogVisible = true;
-    },
+
     signOut() {
       this.$router.push('/sign-in');
     },
-    redirectToMembershipSelector() {
-      this.$router.push({ name: 'membership-selector' });
-    },
+
     updateCities(countryId) {
       this.cities = this.allCities.filter(city => city.countryId === countryId);
     }
@@ -266,15 +234,7 @@ export default {
                              :disabled="!isEditable" class="form-input" />
               </div>
 
-              <div class="form-group">
-                <label class="form-label">{{ $t('Current plan') }}:</label>
-                <div class="input-group">
-                  <pv-input-text v-model="currentPlanName" :disabled="true" class="form-input" />
-                  <pv-button class="change-button" @click="redirectToMembershipSelector">
-                    {{ $t('change') }}
-                  </pv-button>
-                </div>
-              </div>
+
             </div>
 
             <!-- Botones de acción -->
@@ -406,61 +366,7 @@ export default {
   border-radius: 4px;
 }
 
-.subscription-section {
-  width: 100%;
-}
 
-.subscription-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background-color: #f8f9fa;
-}
-
-.current-plan {
-  flex: 1;
-}
-
-.current-plan h3 {
-  color: #2c5a40;
-  margin: 0 0 0.5rem 0;
-}
-
-.current-plan .price {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #3E7C59;
-}
-
-.change-plan-button {
-  background-color: #9A5D4E;
-  border: none;
-  color: white;
-}
-
-.change-plan-button:hover {
-  background-color: #7a4a3e;
-}
-
-.change-plan-button:disabled {
-  background-color: #cccccc;
-}
-
-.confirmation-content {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.confirmation-content p {
-  margin: 0;
-  line-height: 1.5;
-  color: #555;
-}
 
 @media (max-width: 768px) {
   .profile-content {

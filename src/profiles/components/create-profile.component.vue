@@ -56,7 +56,7 @@
                       :options="countries"
                       optionLabel="name"
                       optionValue="id"
-                      placeholder="Selecciona un país"
+                      :placeholder="$t('selectCountry')"
                       class="form-input"
                   />
                 </div>
@@ -70,7 +70,7 @@
                       :options="cities"
                       optionLabel="name"
                       optionValue="id"
-                      placeholder="Selecciona una ciudad"
+                      :placeholder="$t('selectCity')"
                       class="form-input"
                       :disabled="!newCountry"
                   />
@@ -145,12 +145,12 @@ export default {
       this.cities = this.allCities.filter(city => city.countryId === countryId);
       this.newCity = null;
     },
-    confirmApply() {
+    async confirmApply() {
       const userId = localStorage.getItem('userId');
 
       if (!userId) {
         this.toast.add({ severity: 'error', summary: 'Error', detail: 'No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.', life: 3000 });
-        this.$router.push('/sign-in');
+        await this.$router.push('/sign-in');
         return;
       }
 
@@ -165,12 +165,7 @@ export default {
         return;
       }
 
-      const subscriptionId = parseInt(this.$route.query.subscriptionId, 10);
-      if (!subscriptionId) {
-        this.toast.add({ severity: 'warn', summary: 'Suscripción requerida', detail: 'Por favor, selecciona una suscripción primero.', life: 3000 });
-        this.$router.push('/membership-selector');
-        return;
-      }
+      // Subscription check removed as it's now handled in IAM
 
       // Validaciones adicionales
       if (!this.newEmail.includes('@')) {
@@ -196,7 +191,7 @@ export default {
         email: this.newEmail.trim().toLowerCase(),
         countryId: parseInt(this.newCountry, 10),
         cityId: selectedCity.id, // Usamos el ID correcto de la ciudad
-        subscriptionId: parseInt(subscriptionId, 10),
+
         userId: parseInt(userId, 10),
         role: userRole
       };
@@ -204,7 +199,6 @@ export default {
       // Validar que todos los IDs sean números válidos
       if (isNaN(profileData.countryId) || 
           isNaN(profileData.cityId) || 
-          isNaN(profileData.subscriptionId) || 
           isNaN(profileData.userId)) {
         alert('Error en los datos del formulario. Por favor, recarga la página e intenta nuevamente.');
         return;
@@ -224,40 +218,47 @@ export default {
 
       console.log('Enviando al backend:', JSON.stringify(profileData, null, 2));
 
-      // Aquí usas tu método .create()
-      profileApiService.create(profileData)
-          .then(response => {
-            this.toast.add({
-              severity: 'success',
-              summary: '¡Perfil creado!',
-              detail: 'Tu perfil ha sido creado exitosamente.',
-              life: 3000
-            });
-            // Redirigir al panel de control después de crear el perfil
-            this.$router.push('/control-panel');
-          })
-          .catch(error => {
-            console.error('Error al crear el perfil:', error.response?.data);
-            let errorDetail = '';
-            
-            if (error.response?.data?.errors) {
-              // Extraer mensajes específicos de validación
-              errorDetail = Object.values(error.response.data.errors)
-                .flat()
-                .join(', ');
-            } else if (error.response?.data?.title) {
-              errorDetail = error.response.data.title;
-            } else {
-              errorDetail = 'Hubo un error al procesar tu solicitud. Por favor, intenta nuevamente.';
-            }
-            
-            this.toast.add({
-              severity: 'error',
-              summary: 'Error al crear el perfil',
-              detail: errorDetail,
-              life: 5000
-            });
-          });
+      try {
+        const response = await profileApiService.create(profileData);
+        this.toast.add({
+          severity: 'success',
+          summary: '¡Perfil creado!',
+          detail: 'Tu perfil ha sido creado exitosamente.',
+          life: 3000
+        });
+        
+        // Store the profile ID in localStorage if needed
+        if (response.data?.id) {
+          localStorage.setItem('profileId', response.data.id);
+        }
+        
+        // Small delay to ensure the profile is registered in the backend
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Redirigir al panel de control después de crear el perfil
+        await this.$router.push({ name: 'control-panel' });
+      } catch (error) {
+        console.error('Error al crear el perfil:', error.response?.data);
+        let errorDetail = '';
+        
+        if (error.response?.data?.errors) {
+          // Extraer mensajes específicos de validación
+          errorDetail = Object.values(error.response.data.errors)
+            .flat()
+            .join(', ');
+        } else if (error.response?.data?.title) {
+          errorDetail = error.response.data.title;
+        } else {
+          errorDetail = 'Hubo un error al procesar tu solicitud. Por favor, intenta nuevamente.';
+        }
+        
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error al crear el perfil',
+          detail: errorDetail,
+          life: 5000
+        });
+      }
     }
 
   }
