@@ -38,42 +38,44 @@ export const useAuthenticationStore = defineStore({
                 localStorage.setItem('role', this.role);
 
                 console.log(signInResponse);
-                router.push({ name: 'control-panel' });
+                
+                // Primero redirigimos al panel de control
+                return router.push({ name: 'control-panel' });
             } catch (error) {
                 console.error(error);
                 router.push({ name: 'sign-in' });
             }
         },
 
-        async signUp(signUpRequest, router, redirectRoute = 'control-panel') {
+        async signUp(signUpRequest, router, toast) {
             try {
                 const response = await authenticationService.signUp(signUpRequest);
                 const signUpResponse = new SignUpResponse(response.data.message);
 
                 console.log('SignUp Response:', signUpResponse);
-
-                // Esperar un momento para asegurarse de que el usuario se haya creado correctamente
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Crear un nuevo objeto para el inicio de sesión
-                const signInRequest = {
-                    username: signUpRequest.username,
-                    password: signUpRequest.password
-                };
-
-                // Intentar iniciar sesión
-                try {
-                    await this.signIn(signInRequest, router);
-                    router.push({ name: redirectRoute });
-                } catch (signInError) {
-                    console.error('Error en el inicio de sesión después del registro:', signInError);
-                    // Si falla el inicio de sesión, mostrar un mensaje al usuario
-                    alert('Registro exitoso. Por favor, intente iniciar sesión manualmente.');
-                    router.push({ name: 'sign-in' });
+                
+                // Show success message using toast
+                if (toast) {
+                    toast.add({
+                        severity: 'success',
+                        summary: '¡Registro Exitoso!',
+                        detail: 'Su cuenta ha sido creada. Por favor, inicie sesión.',
+                        life: 5000
+                    });
                 }
+                
+                // Redirect to sign-in page
+                router.push({ name: 'sign-in' });
             } catch (error) {
                 console.error('Error en el registro:', error);
-                alert('Error en el registro: ' + (error.response?.data?.message || 'Por favor intente nuevamente'));
+                if (toast) {
+                    toast.add({
+                        severity: 'error',
+                        summary: 'Error en el registro',
+                        detail: error.response?.data?.message || 'Por favor intente nuevamente',
+                        life: 5000
+                    });
+                }
                 router.push({ name: 'sign-up' });
             }
         },

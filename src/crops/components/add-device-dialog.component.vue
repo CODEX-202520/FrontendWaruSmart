@@ -88,7 +88,7 @@ export default {
             id="deviceId"
             v-model="form.deviceId"
             type="text"
-            placeholder="Enter device ID"
+            :placeholder="$t('enterDeviceId')"
         />
       </div>
       <!-- Campo para Device Type -->
@@ -100,18 +100,18 @@ export default {
             :options="deviceTypeOptions"
             option-label="label"
             option-value="value"
-            placeholder="Select a device type"
+            :placeholder="$t('selectDeviceType')"
         />
       </div>
       <!-- Campo para Location -->
       <div class="form-group">
         <pv-label for="location">Location:</pv-label>
-        <pv-input-text id="location" v-model="form.location" type="text" placeholder="Example: center"/>
+        <pv-input-text id="location" v-model="form.location" type="text" :placeholder="$t('locationExample')"/>
       </div>
       <div class="form-actions">
-        <pv-button label="Cancel" @click="closeDialog" :style="{ backgroundColor: '#f44336', color: '#fff' }"
+        <pv-button :label="$t('cancel')" @click="closeDialog" :style="{ backgroundColor: '#f44336', color: '#fff' }"
         />
-        <pv-button label="Add" :disabled="loading" :class="{ loading: loading }" type="submit" :style="{ backgroundColor: '#4CAF50', color: '#fff' }"
+        <pv-button :label="$t('add')" :disabled="loading" :class="{ loading: loading }" type="submit" :style="{ backgroundColor: '#4CAF50', color: '#fff' }"
         />
       </div>
     </form>

@@ -232,7 +232,7 @@ export default {
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} products">
       <template #header v-if="isCommunityAnswers">
 
-        <pv-button label="Add Answer" icon="pi pi-plus"  class="mr-2 button-brown" @click="onNewItemEventHandler" />
+        <pv-button :label="$t('addAnswer')" icon="pi pi-plus"  class="mr-2 button-brown" @click="onNewItemEventHandler" />
       </template>
       <pv-column field="userName" :header="headerContent">
         <template #body="content">

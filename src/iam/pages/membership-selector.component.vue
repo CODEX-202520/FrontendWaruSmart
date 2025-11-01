@@ -1,3 +1,4 @@
+```vue
 <template>
   <div class="membership-selector">
     <h1 class="title">{{ $t('subscriptions.selectSubscription') }}</h1>
@@ -41,7 +42,7 @@
 
       <!-- Sección para administradores -->
       <div v-if="isAdmin" style="margin-top:2rem;">
-        <pv-button label="Crear suscripción" icon="pi pi-plus" class="p-button-success" @click="openCreateDialog" />
+        <pv-button :label="$t('createSubscription')" icon="pi pi-plus" class="p-button-success" @click="openCreateDialog" />
       </div>
 
       <pv-dialog 
@@ -129,9 +130,8 @@
 </template>
 
 <script>
-import profileApiService from '../service/profile-api.service.js';
-import { SubscriptionsApiService } from '../service/subscriptions-api.service.js';
-import { useAuthenticationStore } from '../../iam/services/authentication.store.js';
+import { SubscriptionApiService } from '../services/subscription-api.service.js';
+import { useAuthenticationStore } from '../services/authentication.store.js';
 import { useToast } from "primevue/usetoast";
 
 export default {
@@ -141,14 +141,11 @@ export default {
   },
   data() {
     return {
-      profileSubscriptionId: null,
       memberships: [],
       selectedMembership: { id: 0, name: '', description: '', price: '' },
       colors: ["#005F40", "#9D7C58", "#9A5D4E"],
       dialogVisible: false,
       isEditMode: false,
-      isUpdateMode: false,
-      profileId: null,
       subscriptionForm: {
         id: null,
         name: '',
@@ -171,32 +168,9 @@ export default {
     }
   },
   async mounted() {
-    const userId = localStorage.getItem('userId');
-    this.isUpdateMode = this.$route.query.mode === 'update';
-    
     try {
-      // Primero intentamos obtener las suscripciones disponibles
-      const subscriptionsService = new SubscriptionsApiService();
-      const subscriptionsResponse = await subscriptionsService.getAllSubscriptions();
-      this.memberships = subscriptionsResponse;
-
-      // Luego intentamos obtener el perfil si hay un userId
-      if (userId) {
-        try {
-          const profileResponse = await profileApiService.getUserProfileById(userId);
-          if (profileResponse.data) {
-            this.profileSubscriptionId = profileResponse.data.subscriptionId;
-            this.profileId = profileResponse.data.id;
-          }
-        } catch (error) {
-          // Si es un nuevo usuario, esto es normal
-          console.log('No profile found, might be a new user');
-        }
-      }
-      
-      if (this.isUpdateMode) {
-        document.title = 'WaruSmart | Cambiar Plan';
-      }
+      const subscriptionsService = new SubscriptionApiService();
+      this.memberships = await subscriptionsService.getActive();
     } catch (error) {
       console.error('Error al cargar datos:', error);
       this.toast.add({
@@ -209,30 +183,9 @@ export default {
   },
   methods: {
     selectMembership(membership) {
-      if (membership.id === this.profileSubscriptionId) {
-        this.toast.add({
-          severity: 'info',
-          summary: 'Info',
-          detail: this.$t('subscriptions.alreadyCurrent'),
-          life: 3000
-        });
-        return;
-      }
       this.selectedMembership = Object.assign({}, membership);
     },
-    async confirmSelection() {
-      const userId = localStorage.getItem('userId');
-      if (!userId) {
-        this.toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'No se encontró el ID del usuario. Por favor, inicia sesión primero.',
-          life: 3000
-        });
-        this.$router.push('/login');
-        return;
-      }
-      
+    confirmSelection() {
       if (this.selectedMembership.id === 0) {
         this.toast.add({
           severity: 'warn',
@@ -243,36 +196,10 @@ export default {
         return;
       }
 
-      if (this.isUpdateMode) {
-        try {
-          // Actualizar la suscripción del perfil existente
-          await profileApiService.updateProfile(this.profileId, {
-            subscriptionId: this.selectedMembership.id
-          });
-          
-          this.toast.add({
-            severity: 'success',
-            summary: 'Plan actualizado',
-            detail: 'Tu plan ha sido actualizado exitosamente',
-            life: 3000
-          });
-          
-          this.$router.push('/control-panel');
-        } catch (error) {
-          this.toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'No se pudo actualizar el plan. Por favor intenta nuevamente.',
-            life: 3000
-          });
-        }
-      } else {
-        // Modo creación de perfil
-        this.$router.push({
-          name: 'user-profile-create',
-          query: { subscriptionId: this.selectedMembership.id }
-        });
-      }
+      this.$router.push({
+        name: 'sign-up',
+        query: { subscriptionId: this.selectedMembership.id }
+      });
     },
     openCreateDialog() {
       this.dialogVisible = true;
@@ -305,25 +232,25 @@ export default {
       if (!this.subscriptionForm.name || !this.subscriptionForm.description || !this.subscriptionForm.price || !this.subscriptionForm.durationInDays) {
         return;
       }
-      const subscriptionsService = new SubscriptionsApiService();
+      const subscriptionsService = new SubscriptionApiService();
       try {
         if (this.isEditMode) {
-          await subscriptionsService.updateSubscription(this.subscriptionForm.id, this.subscriptionForm);
+          await subscriptionsService.update(this.subscriptionForm.id, this.subscriptionForm);
         } else {
-          await subscriptionsService.createSubscription(this.subscriptionForm);
+          await subscriptionsService.create(this.subscriptionForm);
         }
         this.dialogVisible = false;
-        this.memberships = await subscriptionsService.getAllSubscriptions();
+        this.memberships = await subscriptionsService.getActive();
       } catch (error) {
         alert('Error al guardar la suscripción.');
       }
     },
     async deleteSubscription(membership) {
       if (!confirm('¿Seguro que deseas eliminar esta suscripción?')) return;
-      const subscriptionsService = new SubscriptionsApiService();
+      const subscriptionsService = new SubscriptionApiService();
       try {
-        await subscriptionsService.deleteSubscription(membership.id);
-        this.memberships = await subscriptionsService.getAllSubscriptions();
+        await subscriptionsService.delete(membership.id);
+        this.memberships = await subscriptionsService.getActive();
       } catch (error) {
         alert('Error al eliminar la suscripción.');
       }
@@ -447,4 +374,4 @@ export default {
     border-radius: 4px;
   }
 } 
-</style>
+</style>```
