@@ -11,12 +11,29 @@ export default {
     return {
       cropsService: null,
       cropList : [],
+      phenologicalPhases: [
+        { name: 'Germinación', value: 'Germination' },
+        { name: 'Macollaje', value: 'Tillering' },
+        { name: 'Elongación del tallo', value: 'StemElongation' },
+        { name: 'Embuchamiento', value: 'Booting' },
+        { name: 'Espigamiento', value: 'Heading' },
+        { name: 'Floración', value: 'Flowering' },
+        { name: 'Llenado de grano', value: 'GrainFilling' },
+        { name: 'Maduración', value: 'Ripening' },
+        { name: 'Listo para cosechar', value: 'HarvestReady' }
+      ]
     }
   },
 
   methods: {
     onSave() {
-      this.$emit('saved', this.entity);
+      // Preparar el objeto para enviar
+      const entityToSave = {
+        ...this.entity,
+        // Si no se seleccionó una fase fenológica, se enviará como null y el backend usará la default
+        phenologicalPhase: this.entity.phenological_phase || null
+      };
+      this.$emit('saved', entityToSave);
     },
     onCancel() {
       this.$emit('canceled');
@@ -64,6 +81,19 @@ export default {
         <pv-float-label>
           <label for="area_land">{{$t('areaLand')}}</label>
           <input id="area_land" v-model="entity.area_land" class="p-inputtext p-component" type="number"/>
+        </pv-float-label>
+      </div>
+      <div class="field mt-5">
+        <pv-float-label>
+          <label for="phenological_phase">{{$t('phenologicalPhase')}}</label>
+          <pv-dropdown 
+            id="phenological_phase" 
+            v-model="entity.phenological_phase" 
+            :options="phenologicalPhases" 
+            optionLabel="name" 
+            optionValue="value"
+            :placeholder="$t('selectPhenologicalPhase')"
+          />
         </pv-float-label>
       </div>
     </div>

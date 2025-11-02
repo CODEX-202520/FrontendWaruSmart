@@ -82,6 +82,7 @@
   "plantedDate": "Fecha de Siembra",
   "harvestDate": "Fecha de Cosecha",
   "phenologicalPhase": "Fase Fenológica",
+  "selectPhenologicalPhase": "Seleccione la fase fenológica",
   "actions": "Acciones",
   "listSowings": "Lista de Siembras en Progreso",
   "register": {
